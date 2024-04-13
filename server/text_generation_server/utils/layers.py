@@ -18,7 +18,11 @@ except ImportError:
 from accelerate import init_empty_weights
 
 from text_generation_server.utils.gptq.quant_linear import QuantLinear
-from text_generation_server.utils.import_utils import IS_CUDA_SYSTEM, IS_ROCM_SYSTEM
+from text_generation_server.utils.import_utils import (
+    IS_CUDA_SYSTEM,
+    IS_ROCM_SYSTEM,
+    IS_NPU_SYSTEM,
+)
 
 HAS_AWQ = True
 try:

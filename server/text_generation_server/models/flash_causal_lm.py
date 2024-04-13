@@ -31,6 +31,7 @@ from text_generation_server.pb import generate_pb2
 from text_generation_server.models.globals import MEM_POOL, CUDA_GRAPHS
 from text_generation_server.utils import StoppingCriteria, HeterogeneousNextTokenChooser
 from text_generation_server.utils.dist import MEMORY_FRACTION
+from text_generation_server.utils.import_utils import IS_CUDA_SYSTEM, IS_ROCM_SYSTEM, IS_NPU_SYSTEM
 
 tracer = trace.get_tracer(__name__)
 
@@ -752,7 +753,10 @@ class FlashCausalLM(Model):
 
     def warmup(self, batch: FlashCausalLMBatch):
         # The warmup batch is the biggest batch we could ever receive
-        torch.cuda.empty_cache()
+        if IS_NPU_SYSTEM:
+            torch.npu.empty_cache()
+        elif IS_CUDA_SYSTEM or IS_ROCM_SYSTEM:
+            torch.cuda.empty_cache()
         try:
             cache_manager = set_cache_manager(
                 batch.blocks,
@@ -771,8 +775,12 @@ class FlashCausalLM(Model):
                 f"Not enough memory to handle {len(batch.input_ids)} prefill tokens. "
                 f"You need to decrease `--max-batch-prefill-tokens`"
             ) from e
+        # do we need except error for npu oom?
 
-        torch.cuda.synchronize(self.device)
+        if IS_NPU_SYSTEM:
+            torch.npu.synchronize(self.device)
+        elif IS_CUDA_SYSTEM or IS_ROCM_SYSTEM:
+            torch.cuda.synchronize(self.device)
 
         # Inspired by the original implementation in [vllm](https://github.com/vllm-project/vllm)
         # Calculate the number of blocks that can be allocated with the free memory
@@ -780,9 +788,13 @@ class FlashCausalLM(Model):
         cache_block_size = BLOCK_SIZE * self.num_kv_heads * self.head_size
         total_cache_size = self.num_layers * cache_block_size * 2 * dtype_size
 
-        total_free_memory, _ = torch.cuda.mem_get_info(self.device)
-        total_gpu_memory = torch.cuda.get_device_properties(self.device).total_memory
-
+        if IS_NPU_SYSTEM:
+            total_free_memory, _ = torch.npu.mem_get_info(self.device)
+            total_gpu_memory = torch.npu.get_device_properties(self.device).total_memory
+        elif IS_CUDA_SYSTEM or IS_ROCM_SYSTEM:
+            total_free_memory, _ = torch.cuda.mem_get_info(self.device)
+            total_gpu_memory = torch.cuda.get_device_properties(self.device).total_memory
+        
         free_memory = max(
             0, total_free_memory - (1 - MEMORY_FRACTION) * total_gpu_memory
         )

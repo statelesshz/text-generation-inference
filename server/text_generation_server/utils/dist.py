@@ -3,13 +3,14 @@ import torch
 
 from datetime import timedelta
 from loguru import logger
+from .import_utils import IS_NPU_SYSTEM
 
 # Tensor Parallelism settings
 RANK = int(os.getenv("RANK", "0"))
 WORLD_SIZE = int(os.getenv("WORLD_SIZE", "1"))
 
 # CUDA memory fraction
-MEMORY_FRACTION = float(os.getenv("CUDA_MEMORY_FRACTION", "1.0"))
+MEMORY_FRACTION = float(os.getenv("GPU_MEMORY_FRACTION", "1.0"))
 
 
 class FakeBarrier:
@@ -44,7 +45,18 @@ class FakeGroup:
 
 
 def initialize_torch_distributed():
-    if torch.cuda.is_available():
+    if IS_NPU_SYSTEM: # TODO: need double check
+        from torch.distributed import ProcessGroupHCCL
+
+        # Set the device id.
+        assert WORLD_SIZE <= torch.npu.device_count(), "Each process is one npu"
+        torch.npu.set_device(device)
+        torch.npu.set_per_process_memory_faction(MEMORY_FRACTION, device)
+        backend = "hccl"
+        options = ProcessGroupHCCL.Options()
+        options.is_high_priority_stream = True
+        option._timeout = timedelta(seconds=60)
+    elif torch.cuda.is_available():
         from torch.distributed import ProcessGroupNCCL
 
         # Set the device id.
