@@ -25,7 +25,7 @@ import torch.distributed
 from torch import nn
 from text_generation_server.utils.import_utils import SYSTEM
 
-if SYSTEM != "ipex":
+if SYSTEM not in ("ipex", "npu"):
     from vllm.model_executor.layers.fused_moe import fused_moe
 from transformers.activations import ACT2FN
 from transformers.configuration_utils import PretrainedConfig

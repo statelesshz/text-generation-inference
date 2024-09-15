@@ -81,6 +81,18 @@ elif SYSTEM == "rocm":
             residual = hidden_states
 
             return super().forward(hidden_states), residual
+        
+elif SYSTEM == "npu":
+    import torch_npu  # noqa: F401
+
+    # TODO(statelesshz): replace this with npu_dropout_add_layer_norm
+    class FastLayerNorm(nn.LayerNorm):
+        def forward(self, hidden_states, residual=None):
+            if residual is not None:
+                hidden_states += residual
+            residual = hidden_states
+
+            return super().forward(hidden_states), residual
 
 elif SYSTEM == "ipex":
     import intel_extension_for_pytorch as ipex
@@ -121,6 +133,23 @@ class FastRMSNorm(nn.Module):
                 residual is not None,
             )
             return out, residual if residual is not None else hidden_states
+        elif SYSTEM == "npu":
+            if residual is None:
+                out = torch_npu.npu_rms_norm(
+                    hidden_states, 
+                    self.weight,
+                    self.variance_epsilon)[0]
+                return out, hidden_states
+            else:
+                # TODO(statelesshz): Can we use npu_add_rms_norm instead of npu_rms_norm?
+                normed_hidden_states, _, res = torch_npu.npu_add_rms_norm(
+                    hidden_states,
+                    residual,
+                    self.weight,
+                    self.variance_epsilon
+                )
+                return normed_hidden_states, res
+                
         elif hidden_states.shape[-1] > 8192:
             if residual is not None:
                 hidden_states += residual

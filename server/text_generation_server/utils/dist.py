@@ -57,6 +57,13 @@ def initialize_torch_distributed():
         options = ProcessGroupNCCL.Options()
         options.is_high_priority_stream = True
         options._timeout = timedelta(seconds=120)
+    elif SYSTEM == "npu":
+        # Set the device id.
+        assert WORLD_SIZE <= torch.npu.device_count(), "Each process is one npu"
+        device = RANK % torch.npu.device_count()
+        torch.npu.set_device(device)
+        torch.npu.set_per_process_memory_fraction(MEMORY_FRACTION, device)
+        backend = "hccl"
     else:
         backend = "gloo"
         options = None

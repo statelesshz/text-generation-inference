@@ -7,6 +7,7 @@ pub(crate) struct Env {
     git_sha: &'static str,
     docker_label: &'static str,
     nvidia_env: String,
+    npu_env: String,
     xpu_env: String,
 }
 
@@ -17,6 +18,7 @@ impl Env {
 
         Self {
             nvidia_env: nvidia_env.unwrap_or("N/A".to_string()),
+            npu_env: npu_env.unwrap_or("N/A".to_string()),
             xpu_env: xpu_env.unwrap_or("N/A".to_string()),
             cargo_target: env!("VERGEN_CARGO_TARGET_TRIPLE"),
             cargo_version: env!("VERGEN_RUSTC_SEMVER"),
@@ -35,6 +37,7 @@ impl fmt::Display for Env {
         writeln!(f, "Commit sha: {}", self.git_sha)?;
         writeln!(f, "Docker label: {}", self.docker_label)?;
         writeln!(f, "nvidia-smi:\n{}", self.nvidia_env)?;
+        writeln!(f, "npu-smi:\n{}", self.npu_env)?;
         write!(f, "xpu-smi:\n{}", self.xpu_env)?;
 
         Ok(())
@@ -45,6 +48,13 @@ fn nvidia_smi() -> Option<String> {
     let output = Command::new("nvidia-smi").output().ok()?;
     let nvidia_smi = String::from_utf8(output.stdout).ok()?;
     let output = nvidia_smi.replace('\n', "\n   ");
+    Some(output.trim().to_string())
+}
+
+fn xpu_smi() -> Option<String> {
+    let output = Command::new("npu-smi").arg("info").output().ok()?;
+    let xpu_smi = String::from_utf8(output.stdout).ok()?;
+    let output = xpu_smi.replace('\n', "\n   ");
     Some(output.trim().to_string())
 }
 

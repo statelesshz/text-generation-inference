@@ -16,6 +16,8 @@ elif SYSTEM == "rocm":
     from .rocm import attention, paged_attention, reshape_and_cache, SUPPORTS_WINDOWING
 elif SYSTEM == "ipex":
     from .ipex import attention, paged_attention, reshape_and_cache, SUPPORTS_WINDOWING
+elif SYSTEM == "npu":
+    from .npu import attention, paged_attention, reshape_and_cache, SUPPORTS_WINDOWING
 else:
     raise ImportError(f"System {SYSTEM} doesn't support flash/paged attention")
 
