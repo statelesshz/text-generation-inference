@@ -1122,6 +1122,22 @@ class FlashCausalLM(Model):
                 )
                 for _ in range(num_layers)
             ]
+        elif SYSTEM == "npu" and device == torch.device("npu"):
+            self.kv_cache = [
+                (
+                    torch.empty(
+                        (num_blocks, BLOCK_SIZE, num_heads * head_size),
+                        dtype=dtype,
+                        device=device,
+                    ),
+                    torch.empty(
+                        (num_blocks, BLOCK_SIZE, num_heads * head_size),
+                        dtype=dtype,
+                        device=device,
+                    ),
+                )
+                for _ in range(num_layers)
+            ]
         else:
             self.kv_cache = [
                 (
