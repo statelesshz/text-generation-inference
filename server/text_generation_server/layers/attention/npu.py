@@ -40,11 +40,11 @@ def paged_attention(
     max_s: int,
     softcap: Optional[float] = None,
 ):
-    # value_cache => [num_blocks, num_heads, head_size, block_size]
-    # block_size = value_cache.shape[3]
+    # value shape: [num_tokens, num_heads, head_size]
+    # value_cache => [num_blocks, block_size, num_heads*head_size]
     block_size = BLOCK_SIZE
-    num_seqs, num_heads, head_size = query.shape
-    # s,n,d
+    num_heads = query.shape[1]
+
     breakpoint()
     return torch_npu.npu_incre_flash_attention(
         query,
