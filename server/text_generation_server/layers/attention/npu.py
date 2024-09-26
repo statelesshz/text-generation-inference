@@ -14,9 +14,19 @@ def reshape_and_cache(
     value_cache: torch.Tensor,
     slots: torch.Tensor,
 ):
-    shape = key_cache.shape
-    key_cache.view(-1, shape[-2], shape[-1])[slots] = key
-    value_cache.view(-1, shape[2], shape[-1])[slots] = value
+    num_heads, head_size = key.shape
+    num_blocks, block_size = key_cache.shape[:2]
+    total_blocks = num_blocks * block_size
+
+    # only support contiguous k, v
+    key = key.contiguous()
+    value = value.contiguous()
+
+    key_cache_reshaped = key_cache.view(total_blocks, num_heads, head_size)
+    value_cache_reshaped = value_cache.view(total_blocks, num_heads, head_size)
+
+    torch_npu.npu_scatter_nd_update_(key_cache_reshaped, slots, key)
+    torch_npu.npu_scatter_nd_update_(value_cache_reshaped, slots, value)
 
 
 def paged_attention(
